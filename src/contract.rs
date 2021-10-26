@@ -1,13 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response, StdResult, WasmMsg, Addr, wasm_execute};
+use cosmwasm_std::{
+    to_binary, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{config_read, config_store, Config, DATA, NftData};
-use cw721_base::{MintMsg, Extension};
-use crate::error::ContractError::DoesNotExist;
+use crate::state::{config_read, config_store, Config};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:nft-pixel-wall";
@@ -43,16 +43,7 @@ pub fn execute(
         ExecuteMsg::UpdateConfig { owner } => update_config(deps, info, owner),
         ExecuteMsg::RegisterContracts { nft_contract } => {
             register_contracts(deps, info, nft_contract)
-        },
-        ExecuteMsg::MintPixel {
-            token_id,
-        } => mint_pixel(deps, info, token_id),
-        ExecuteMsg::ChangeRgb {
-            token_id,
-            r,
-            g,
-            b,
-        } => change_rgb(deps, info, token_id, r, g, b),
+        }
     }
 }
 
@@ -93,59 +84,6 @@ pub fn update_config(
     })?;
 
     Ok(Response::new().add_attributes(vec![("action", "update_config")]))
-}
-
-pub fn mint_pixel(
-    deps: DepsMut,
-    info: MessageInfo,
-    token_id: String,
-) -> Result<Response, ContractError> {
-    let mut config: Config = config_read(deps.storage).load()?;
-
-    //if token exists, exit
-    DATA.update(deps.storage, &token_id, |existing| match existing {
-        None => Ok(NftData{
-            r: 0,
-            g: 0,
-            b: 0
-        }),
-        Some(_) => Err(ContractError::Unauthorized {}),
-    });
-
-    let mint_msg = MintMsg::<Extension> {
-        token_id,
-        owner: String::from(info.sender),
-        token_uri: None,
-        extension: None,
-    };
-
-    res = wasm_execute(String::from(config.nft_contract), to_binary(&mint_msg), vec![]);
-
-
-
-
-    Ok(Response::new())
-}
-
-pub fn change_rgb(
-    deps: DepsMut,
-    info: MessageInfo,
-    token_id: String,
-    r: u8,
-    g: u8,
-    b: u8,
-) -> Result<Response, ContractError> {
-    //todo: check if token exists
-    //todo: check if token.owner = info.sender
-    DATA.update(deps.storage, &token_id, |existing| match existing {
-        None => Err(DoesNotExist {}),
-        Some(_) => Ok(NftData{
-            r,
-            g,
-            b,
-        }),
-    });
-    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
