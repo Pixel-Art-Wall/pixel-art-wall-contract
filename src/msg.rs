@@ -9,6 +9,15 @@ pub struct InstantiateMsg {}
 pub enum ExecuteMsg {
     RegisterContracts { nft_contract: String },
     UpdateConfig { owner: Option<String> },
+    MintPixel {
+        token_id: String,
+    },
+    ChangeRgb {
+        token_id: String,
+        r: u8,
+        g: u8,
+        b: u8,
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
