@@ -1,34 +1,34 @@
+use cosmwasm_std::{CanonicalAddr, Storage};
+use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
+use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Addr;
-use cw_storage_plus::Item;
+static KEY_CONFIG: &[u8] = b"config";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
-    pub count: i32,
-    pub owner: Addr,
+pub struct Config {
+    pub owner: CanonicalAddr,
+    pub nft_contract: CanonicalAddr,
 }
 
-pub const STATE: Item<State> = Item::new("state");
-
-// see: https://docs.opensea.io/docs/metadata-standards
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
-pub struct Metadata {
-    pub image: Option<String>,
-    pub image_data: Option<String>,
-    pub external_url: Option<String>,
-    pub description: Option<String>,
-    pub name: Option<String>,
-    pub attributes: Option<Vec<Trait>>,
-    pub background_color: Option<String>,
-    pub animation_url: Option<String>,
-    pub youtube_url: Option<String>,
+pub fn config_store(storage: &mut dyn Storage) -> Singleton<Config> {
+    singleton(storage, KEY_CONFIG)
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
-pub struct Trait {
-    pub display_type: Option<String>,
-    pub trait_type: String,
-    pub value: String,
+pub fn config_read(storage: &dyn Storage) -> ReadonlySingleton<Config> {
+    singleton_read(storage, KEY_CONFIG)
 }
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+/// Since all colours have range [0, 255] a u8 suffices.
+pub struct NftData {
+    /// Red part of the colour.
+    pub r: u8,
+    /// Green part of the colour.
+    pub g: u8,
+    /// Blue part of the colour.
+    pub b: u8,
+}
+
+pub const DATA: Map<&str, NftData> = Map::new("data");
