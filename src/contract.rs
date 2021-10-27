@@ -1,13 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    to_binary, wasm_execute, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response,
+    StdResult,
 };
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{config_read, config_store, Config};
+use crate::querier::query_token_owner;
+use crate::state::{config_read, config_store, Color, Config, NftData, DATA};
+use cw721_base::{Extension, MintMsg};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:nft-pixel-wall";
@@ -41,13 +44,18 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateConfig { owner } => update_config(deps, info, owner),
-        ExecuteMsg::RegisterContracts { nft_contract } => {
-            register_contracts(deps, info, nft_contract)
+        ExecuteMsg::RegisterContract { nft_contract } => {
+            register_contract(deps, info, nft_contract)
         }
+        ExecuteMsg::MintPixel {
+            token_id,
+            color_map,
+            url,
+        } => mint_pixel(deps, info, token_id, color_map, url),
     }
 }
 
-pub fn register_contracts(
+pub fn register_contract(
     deps: DepsMut,
     info: MessageInfo,
     nft_contract: String,
@@ -86,10 +94,84 @@ pub fn update_config(
     Ok(Response::new().add_attributes(vec![("action", "update_config")]))
 }
 
+pub fn mint_pixel(
+    deps: DepsMut,
+    info: MessageInfo,
+    token_id: u16,
+    color_map: Option<[[Color; 5]; 5]>,
+    url: Option<String>,
+) -> Result<Response, ContractError> {
+    if token_id >= 40_000 {
+        return Err(ContractError::InvalidTokenRange {});
+    }
+
+    let config: Config = config_read(deps.storage).load()?;
+    let token_id = token_id.to_string();
+    if query_token_owner(
+        &deps.querier,
+        deps.api.addr_humanize(&config.nft_contract)?,
+        token_id.clone(),
+    )
+    .is_ok()
+    {
+        return Err(ContractError::TokenAlreadyMinted {});
+    };
+
+    let new_color_map = {
+        if let Some(color_map) = color_map {
+            color_map
+        } else {
+            [[Color {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 0,
+            }; 5]; 5]
+        }
+    };
+
+    let new_url = {
+        if let Some(url) = url {
+            url
+        } else {
+            String::from("")
+        }
+    };
+
+    DATA.update(deps.storage, &token_id, |existing| match existing {
+        None => Ok(NftData {
+            pixel_colors: new_color_map,
+            url: new_url.clone(),
+        }),
+        Some(_) => Err(ContractError::TokenAlreadyMinted {}),
+    })?;
+
+    let mint_msg = MintMsg::<Extension> {
+        token_id: token_id.clone(),
+        owner: String::from(&info.sender),
+        token_uri: None,
+        extension: None,
+    };
+
+    let _res = wasm_execute(
+        deps.api.addr_humanize(&config.nft_contract)?,
+        &mint_msg,
+        vec![],
+    )
+    .unwrap();
+    Ok(Response::new()
+        .add_attribute("action", "mint_pixel")
+        .add_attribute("minter", info.sender)
+        .add_attribute("token_id", token_id)
+        .add_attribute("url", new_url)
+        .add_attribute("color_map", format!("{:?}", new_color_map)))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::PixelData { token_id } => to_binary(&query_pixel_data(deps, token_id)?),
     }
 }
 
@@ -99,4 +181,8 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         owner: deps.api.addr_humanize(&config.owner)?.to_string(),
         nft_contract: deps.api.addr_humanize(&config.nft_contract)?.to_string(),
     })
+}
+
+fn query_pixel_data(deps: Deps, token_id: u16) -> StdResult<NftData> {
+    DATA.load(deps.storage, &token_id.to_string())
 }

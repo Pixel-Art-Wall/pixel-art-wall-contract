@@ -20,15 +20,24 @@ pub fn config_read(storage: &dyn Storage) -> ReadonlySingleton<Config> {
     singleton_read(storage, KEY_CONFIG)
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Copy)]
 /// Since all colours have range [0, 255] a u8 suffices.
-pub struct NftData {
+pub struct Color {
     /// Red part of the colour.
     pub r: u8,
     /// Green part of the colour.
     pub g: u8,
     /// Blue part of the colour.
     pub b: u8,
+    /// free alpha
+    pub a: u8,
+}
+
+// wrap an array of colours and a url to make up for the 5x5 pixel square
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct NftData {
+    pub pixel_colors: [[Color; 5]; 5],
+    pub url: String,
 }
 
 pub const DATA: Map<&str, NftData> = Map::new("data");
