@@ -6,7 +6,6 @@ use cw721_base::{state::TokenInfo, Cw721Contract};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{config_store, tokens, Color, Config, PixelExtension};
-use crate::msg::QueryMsg::ContractInfo;
 
 const PIXEL: &str = "pixel";
 
@@ -102,7 +101,16 @@ pub fn execute_change_url(
     position: u16,
     url: String,
 ) -> Result<Response, ContractError> {
-    let owner = get_owner(deps.as_ref(), env, position)?;
+
+    let owner_check = get_owner(deps.as_ref(), env.clone(), position);
+    let owner;
+
+    if owner_check.is_some() {
+        owner = owner_check.unwrap();
+    } else {
+        return Err(ContractError::DoesNotExist {});
+    }
+
 
     if owner != info.sender {
         return Err(ContractError::Unauthorized {});
@@ -128,7 +136,7 @@ pub fn execute_change_url(
     tokens().update(deps.storage, &token_id, |existing| match existing {
         None => {Err(ContractError::Unauthorized {})}
         Some(_) => {Ok(updated_token)}
-    });
+    })?;
 
     Ok(Response::new()
         .add_attribute("action", "change url")

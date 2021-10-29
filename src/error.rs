@@ -18,6 +18,9 @@ pub enum ContractError {
 
     #[error("Invalid token range")]
     InvalidTokenRange {},
+
+    #[error("Token ID Does Not Exist")]
+    DoesNotExist {},
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }

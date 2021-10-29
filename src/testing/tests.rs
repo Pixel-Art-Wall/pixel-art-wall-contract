@@ -315,3 +315,36 @@ fn can_change_url() {
         get_token_info(user.sender.clone(), TEST_COLORS, TEST_URL.to_string());
     assert_eq!(expected_token_info, actual_token_info);
 }
+
+#[test]
+fn cannot_change_url_invalid_token_id() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {};
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    // we can just call .unwrap() to assert this was a success
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let user = mock_info(TEST_USER, &[]);
+
+    let mint_msg = ExecuteMsg::Mint {
+        token_id: TEST_TOKEN_ID1,
+        color_map: Some(TEST_COLORS),
+        url: None,
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap();
+
+    let change_url_msg = ExecuteMsg::ChangeUrl {
+        token_id: TEST_TOKEN_ID2,
+        url: TEST_URL.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), user.clone(), change_url_msg);
+
+    assert_eq!(
+        Err(ContractError::DoesNotExist {}),
+        res
+    );
+}
