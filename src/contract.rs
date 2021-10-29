@@ -37,9 +37,10 @@ pub fn execute(
             color_map,
             url,
         } => ExecHandler::execute_mint(deps, info, env, token_id, color_map, url),
-        ExecuteMsg::ChangeUrl { token_id, url } => {
-            ExecHandler::execute_change_url(deps, info, env, token_id, url)
-        }
+        ExecuteMsg::ChangeUrl {
+            token_id,
+            url
+        } => ExecHandler::execute_change_url(deps, info, env, token_id, url),
         ExecuteMsg::ChangeColor {
             token_id,
             color_map,
