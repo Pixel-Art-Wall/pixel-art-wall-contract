@@ -409,7 +409,8 @@ fn can_change_color() {
 
     let actual_token_info: PixelTokenInfo =
         pixel_info_query(deps.as_ref(), TEST_TOKEN_ID1.to_string());
-    let expected_token_info = get_token_info(user.sender.clone(), EMPTY_COLORS, TEST_URL.to_string());
+    let expected_token_info =
+        get_token_info(user.sender.clone(), EMPTY_COLORS, TEST_URL.to_string());
     assert_eq!(expected_token_info, actual_token_info);
 
     let change_color_msg = ExecuteMsg::ChangeColor {
