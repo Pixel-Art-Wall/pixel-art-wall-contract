@@ -294,17 +294,19 @@ fn can_change_url() {
     let expected_token_info = get_token_info(user.sender.clone(), TEST_COLORS, "".to_string());
     assert_eq!(expected_token_info, actual_token_info);
 
-    let change_url_msg = ExecuteMsg::ChangeUrl {
+    let change_url_msg = ExecuteMsg::ChangePixelData {
         token_id: TEST_TOKEN_ID1,
-        url: TEST_URL.to_string(),
+        color_map: None,
+        url: Some(TEST_URL.to_string()),
     };
 
     let res = execute(deps.as_mut(), mock_env(), user.clone(), change_url_msg).unwrap();
 
     assert_eq!(
         Response::new()
-            .add_attribute("action", "change url")
+            .add_attribute("action", "change pixel data")
             .add_attribute("token_id", TEST_TOKEN_ID1.to_string())
+            .add_attribute("color_map", format!("{:?}", TEST_COLORS))
             .add_attribute("url", TEST_URL.to_string()),
         res
     );
@@ -317,7 +319,7 @@ fn can_change_url() {
 }
 
 #[test]
-fn cannot_change_unminted() {
+fn cannot_change_url_unminted() {
     let mut deps = mock_dependencies(&[]);
 
     let msg = InstantiateMsg {};
@@ -336,9 +338,10 @@ fn cannot_change_unminted() {
 
     let _res = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap();
 
-    let change_url_msg = ExecuteMsg::ChangeUrl {
+    let change_url_msg = ExecuteMsg::ChangePixelData {
         token_id: TEST_TOKEN_ID2,
-        url: TEST_URL.to_string(),
+        color_map: None,
+        url: Some(TEST_URL.to_string()),
     };
 
     let res = execute(deps.as_mut(), mock_env(), user.clone(), change_url_msg);
@@ -367,9 +370,10 @@ fn cannot_change_url_not_owned() {
 
     let _res = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap();
 
-    let change_url_msg = ExecuteMsg::ChangeUrl {
+    let change_url_msg = ExecuteMsg::ChangePixelData {
         token_id: TEST_TOKEN_ID1,
-        url: TEST_URL.to_string(),
+        color_map: None,
+        url: Some(TEST_URL.to_string()),
     };
 
     let res = execute(deps.as_mut(), mock_env(), user2, change_url_msg);
@@ -413,18 +417,20 @@ fn can_change_color() {
         get_token_info(user.sender.clone(), EMPTY_COLORS, TEST_URL.to_string());
     assert_eq!(expected_token_info, actual_token_info);
 
-    let change_color_msg = ExecuteMsg::ChangeColor {
+    let change_color_msg = ExecuteMsg::ChangePixelData {
         token_id: TEST_TOKEN_ID1,
-        color_map: TEST_COLORS,
+        color_map: Some(TEST_COLORS),
+        url: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), user.clone(), change_color_msg).unwrap();
 
     assert_eq!(
         Response::new()
-            .add_attribute("action", "change color")
+            .add_attribute("action", "change pixel data")
             .add_attribute("token_id", TEST_TOKEN_ID1.to_string())
-            .add_attribute("color_map", format!("{:?}", TEST_COLORS)),
+            .add_attribute("color_map", format!("{:?}", TEST_COLORS))
+            .add_attribute("url", TEST_URL.to_string()),
         res
     );
 
@@ -455,9 +461,10 @@ fn cannot_change_color_unminted() {
 
     let _res = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap();
 
-    let change_color_msg = ExecuteMsg::ChangeColor {
+    let change_color_msg = ExecuteMsg::ChangePixelData {
         token_id: TEST_TOKEN_ID2,
-        color_map: TEST_COLORS,
+        color_map: Some(TEST_COLORS),
+        url: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), user.clone(), change_color_msg);
@@ -486,9 +493,10 @@ fn cannot_change_color_not_owned() {
 
     let _res = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap();
 
-    let change_color_msg = ExecuteMsg::ChangeColor {
+    let change_color_msg = ExecuteMsg::ChangePixelData {
         token_id: TEST_TOKEN_ID1,
-        color_map: TEST_COLORS,
+        color_map: Some(TEST_COLORS),
+        url: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), user2, change_color_msg);
