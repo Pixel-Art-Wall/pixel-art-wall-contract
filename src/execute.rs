@@ -119,17 +119,15 @@ pub fn execute_change_pixel_data(
 
     let extension = token.clone().extension;
 
-    let new_url;
-    match url {
-        None => new_url = extension.url,
-        Some(_) => new_url = url.unwrap(),
-    }
+    let new_url = match url {
+        None => extension.url,
+        Some(url) => url,
+    };
 
-    let new_color_map;
-    match color_map {
-        None => new_color_map = extension.pixel_colors,
-        Some(_) => new_color_map = color_map.unwrap(),
-    }
+    let new_color_map = match color_map {
+        None => extension.pixel_colors,
+        Some(color_map) => color_map,
+    };
 
     let updated_extension = PixelExtension {
         pixel_colors: new_color_map,
@@ -150,48 +148,6 @@ pub fn execute_change_pixel_data(
         .add_attribute("token_id", token_id)
         .add_attribute("color_map", format!("{:?}", new_color_map))
         .add_attribute("url", new_url))
-}
-
-pub fn execute_change_color(
-    deps: DepsMut,
-    info: MessageInfo,
-    env: Env,
-    position: u16,
-    color_map: [[Color; 5]; 5],
-) -> Result<Response, ContractError> {
-    if !token_minted(deps.as_ref(), env.clone(), position) {
-        return Err(ContractError::DoesNotExist {});
-    }
-
-    let owner = get_owner(deps.as_ref(), env, position).unwrap();
-
-    if owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    let token_id = position.to_string();
-    let token = tokens().load(deps.storage, &token_id)?;
-
-    let extension = token.clone().extension;
-
-    let updated_extension = PixelExtension {
-        pixel_colors: color_map,
-        url: extension.url,
-    };
-
-    let updated_token = TokenInfo::<PixelExtension> {
-        owner: Addr::unchecked(owner),
-        approvals: token.clone().approvals,
-        token_uri: token.clone().token_uri,
-        extension: updated_extension,
-    };
-
-    tokens().replace(deps.storage, &token_id, Some(&updated_token), Some(&token))?;
-
-    Ok(Response::new()
-        .add_attribute("action", "change color")
-        .add_attribute("token_id", token_id)
-        .add_attribute("color_map", format!("{:?}", color_map)))
 }
 
 pub fn execute_update_config(
