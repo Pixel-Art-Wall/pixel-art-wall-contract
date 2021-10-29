@@ -257,3 +257,61 @@ fn can_mint_pixel_with_url_and_colors() {
         get_token_info(user.sender.clone(), TEST_COLORS, TEST_URL.to_string());
     assert_eq!(expected_token_info, actual_token_info);
 }
+
+#[test]
+fn can_change_url() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {};
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    // we can just call .unwrap() to assert this was a success
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let user = mock_info(TEST_USER, &[]);
+
+    let mint_msg = ExecuteMsg::Mint {
+        token_id: TEST_TOKEN_ID1,
+        color_map: Some(TEST_COLORS),
+        url: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "mint_pixel")
+            .add_attribute("minter", user.sender.clone())
+            .add_attribute("token_id", TEST_TOKEN_ID1.to_string())
+            .add_attribute("url", "")
+            .add_attribute("color_map", format!("{:?}", TEST_COLORS)),
+        res
+    );
+
+    let actual_token_info: PixelTokenInfo =
+        pixel_info_query(deps.as_ref(), TEST_TOKEN_ID1.to_string());
+    let expected_token_info =
+        get_token_info(user.sender.clone(), TEST_COLORS, "".to_string());
+    assert_eq!(expected_token_info, actual_token_info);
+
+    let change_url_msg = ExecuteMsg::ChangeUrl {
+        token_id: TEST_TOKEN_ID1,
+        url: TEST_URL.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), user.clone(), change_url_msg).unwrap();
+
+    assert_eq!(
+        Response::new()
+            .add_attribute("action", "change url")
+            .add_attribute("token_id", TEST_TOKEN_ID1.to_string())
+            .add_attribute("url", TEST_URL.to_string()),
+        res
+    );
+
+    let actual_token_info: PixelTokenInfo =
+        pixel_info_query(deps.as_ref(), TEST_TOKEN_ID1.to_string());
+    let expected_token_info =
+        get_token_info(user.sender.clone(), TEST_COLORS, TEST_URL.to_string());
+    assert_eq!(expected_token_info, actual_token_info);
+}

@@ -40,7 +40,7 @@ pub fn execute(
         ExecuteMsg::ChangeUrl {
             token_id,
             url
-        } => ExecHandler::execute_change_url(deps, info, env, token_id, url);
+        } => ExecHandler::execute_change_url(deps, info, env, token_id, url),
         _ => ExecHandler::cw721_base_execute(deps, env, info, msg),
     }
 }
