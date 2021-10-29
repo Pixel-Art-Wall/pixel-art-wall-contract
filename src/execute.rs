@@ -103,15 +103,11 @@ pub fn execute_change_url(
     position: u16,
     url: String,
 ) -> Result<Response, ContractError> {
-    let owner_check = get_owner(deps.as_ref(), env, position);
-    let owner;
-
-    match owner_check {
-        None => {
-            return Err(ContractError::DoesNotExist {});
-        }
-        Some(_) => owner = owner_check.unwrap(),
+    if !token_minted(deps.as_ref(), env.clone(), position) {
+        return Err(ContractError::DoesNotExist {});
     }
+
+    let owner = get_owner(deps.as_ref(), env, position).unwrap();
 
     if owner != info.sender {
         return Err(ContractError::Unauthorized {});
@@ -120,7 +116,7 @@ pub fn execute_change_url(
     let token_id = position.to_string();
     let token = tokens().load(deps.storage, &token_id)?;
 
-    let extension = token.extension;
+    let extension = token.clone().extension;
 
     let updated_extension = PixelExtension {
         pixel_colors: extension.pixel_colors,
@@ -129,16 +125,12 @@ pub fn execute_change_url(
 
     let updated_token = TokenInfo::<PixelExtension> {
         owner: Addr::unchecked(owner),
-        approvals: token.approvals,
-        token_uri: token.token_uri,
+        approvals: token.clone().approvals,
+        token_uri: token.clone().token_uri,
         extension: updated_extension,
     };
 
-    tokens().update(deps.storage, &token_id, |existing| match existing {
-        None => Err(ContractError::Unauthorized {}),
-        Some(_) => Ok(updated_token),
-    })?;
-
+    tokens().replace(deps.storage, &token_id, Some(&updated_token), Some(&token))?;
     Ok(Response::new()
         .add_attribute("action", "change url")
         .add_attribute("token_id", token_id)
@@ -177,6 +169,10 @@ pub fn cw721_base_execute(
     cw721_contract
         .execute(deps, env, info, msg.into())
         .map_err(|err| err.into())
+}
+
+fn token_minted(deps: Deps, env: Env, position: u16) -> bool {
+    get_owner(deps, env, position).is_some()
 }
 
 fn get_owner(deps: Deps, env: Env, position: u16) -> Option<String> {
