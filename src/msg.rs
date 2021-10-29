@@ -20,9 +20,10 @@ pub enum ExecuteMsg {
         color_map: Option<[[Color; 5]; 5]>,
         url: Option<String>,
     },
-    ChangeUrl {
+    ChangePixelData {
         token_id: u16,
-        url: String,
+        color_map: Option<[[Color; 5]; 5]>,
+        url: Option<String>,
     },
 
     /// BELOW ARE COPIED FROM CW721-BASE

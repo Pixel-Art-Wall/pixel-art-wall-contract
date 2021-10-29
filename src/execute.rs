@@ -96,12 +96,13 @@ pub fn execute_mint(
         .add_attribute("color_map", format!("{:?}", new_color_map)))
 }
 
-pub fn execute_change_url(
+pub fn execute_change_pixel_data(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
     position: u16,
-    url: String,
+    color_map: Option<[[Color; 5]; 5]>,
+    url: Option<String>,
 ) -> Result<Response, ContractError> {
     if !token_minted(deps.as_ref(), env.clone(), position) {
         return Err(ContractError::DoesNotExist {});
@@ -118,9 +119,19 @@ pub fn execute_change_url(
 
     let extension = token.clone().extension;
 
+    let new_url = match url {
+        None => extension.url,
+        Some(url) => url,
+    };
+
+    let new_color_map = match color_map {
+        None => extension.pixel_colors,
+        Some(color_map) => color_map,
+    };
+
     let updated_extension = PixelExtension {
-        pixel_colors: extension.pixel_colors,
-        url: url.clone(),
+        pixel_colors: new_color_map,
+        url: new_url.clone(),
     };
 
     let updated_token = TokenInfo::<PixelExtension> {
@@ -131,10 +142,12 @@ pub fn execute_change_url(
     };
 
     tokens().replace(deps.storage, &token_id, Some(&updated_token), Some(&token))?;
+
     Ok(Response::new()
-        .add_attribute("action", "change url")
+        .add_attribute("action", "change pixel data")
         .add_attribute("token_id", token_id)
-        .add_attribute("url", url))
+        .add_attribute("color_map", format!("{:?}", new_color_map))
+        .add_attribute("url", new_url))
 }
 
 pub fn execute_update_config(
