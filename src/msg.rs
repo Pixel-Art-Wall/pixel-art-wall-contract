@@ -25,6 +25,11 @@ pub enum ExecuteMsg {
         url: String,
     },
 
+    ChangeColor {
+        token_id: u16,
+        color_map: [[Color; 5]; 5],
+    },
+
     /// BELOW ARE COPIED FROM CW721-BASE
     TransferNft {
         recipient: String,
