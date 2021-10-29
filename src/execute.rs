@@ -169,7 +169,7 @@ pub fn execute_change_color(
     let token_id = position.to_string();
     let token = tokens().load(deps.storage, &token_id)?;
 
-    let extension = token.clone().extension;
+    let extension = token.extension;
 
     let updated_extension = PixelExtension {
         pixel_colors: color_map,
@@ -178,12 +178,15 @@ pub fn execute_change_color(
 
     let updated_token = TokenInfo::<PixelExtension> {
         owner: Addr::unchecked(owner),
-        approvals: token.clone().approvals,
-        token_uri: token.clone().token_uri,
+        approvals: token.approvals,
+        token_uri: token.token_uri,
         extension: updated_extension,
     };
 
-    tokens().replace(deps.storage, &token_id, Some(&updated_token), Some(&token))?;
+    tokens().update(deps.storage, &token_id, |existing| match existing {
+        None => Err(ContractError::Unauthorized {}),
+        Some(_) => Ok(updated_token),
+    })?;
 
     Ok(Response::new()
         .add_attribute("action", "change color")
