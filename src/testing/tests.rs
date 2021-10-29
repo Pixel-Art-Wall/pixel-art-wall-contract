@@ -9,6 +9,7 @@ use cw721_base::state::TokenInfo;
 
 const TEST_CREATOR: &str = "creator";
 const TEST_USER: &str = "user";
+const TEST_USER2: &str = "user2";
 const TEST_TOKEN_ID1: u16 = 0;
 const TEST_TOKEN_ID2: u16 = 1;
 const TEST_URL: &str = "url";
@@ -317,7 +318,7 @@ fn can_change_url() {
 }
 
 #[test]
-fn cannot_change_url_invalid_token_id() {
+fn cannot_change_unminted() {
     let mut deps = mock_dependencies(&[]);
 
     let msg = InstantiateMsg {};
@@ -345,6 +346,40 @@ fn cannot_change_url_invalid_token_id() {
 
     assert_eq!(
         Err(ContractError::DoesNotExist {}),
+        res
+    );
+}
+
+#[test]
+fn cannot_change_url_not_owned() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {};
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    // we can just call .unwrap() to assert this was a success
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let user = mock_info(TEST_USER, &[]);
+    let user2 = mock_info(TEST_USER2, &[]);
+
+    let mint_msg = ExecuteMsg::Mint {
+        token_id: TEST_TOKEN_ID1,
+        color_map: Some(TEST_COLORS),
+        url: None,
+    };
+
+    let _res = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap();
+
+    let change_url_msg = ExecuteMsg::ChangeUrl {
+        token_id: TEST_TOKEN_ID1,
+        url: TEST_URL.to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), user2, change_url_msg);
+
+    assert_eq!(
+        Err(ContractError::Unauthorized {}),
         res
     );
 }
