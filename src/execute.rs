@@ -1,5 +1,7 @@
 use crate::query as QueryHandler;
-use cosmwasm_std::{from_binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, Addr};
+use cosmwasm_std::{
+    from_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+};
 use cw721::{ContractInfoResponse, OwnerOfResponse};
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
@@ -101,16 +103,15 @@ pub fn execute_change_url(
     position: u16,
     url: String,
 ) -> Result<Response, ContractError> {
-
-    let owner_check = get_owner(deps.as_ref(), env.clone(), position);
+    let owner_check = get_owner(deps.as_ref(), env, position);
     let owner;
 
-    if owner_check.is_some() {
-        owner = owner_check.unwrap();
-    } else {
-        return Err(ContractError::DoesNotExist {});
+    match owner_check {
+        None => {
+            return Err(ContractError::DoesNotExist {});
+        }
+        Some(_) => owner = owner_check.unwrap(),
     }
-
 
     if owner != info.sender {
         return Err(ContractError::Unauthorized {});
@@ -130,12 +131,12 @@ pub fn execute_change_url(
         owner: Addr::unchecked(owner),
         approvals: token.approvals,
         token_uri: token.token_uri,
-        extension: updated_extension
+        extension: updated_extension,
     };
 
     tokens().update(deps.storage, &token_id, |existing| match existing {
-        None => {Err(ContractError::Unauthorized {})}
-        Some(_) => {Ok(updated_token)}
+        None => Err(ContractError::Unauthorized {}),
+        Some(_) => Ok(updated_token),
     })?;
 
     Ok(Response::new()
