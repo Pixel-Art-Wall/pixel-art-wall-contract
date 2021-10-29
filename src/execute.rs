@@ -114,10 +114,11 @@ pub fn execute_change_url(
     let owner_check = get_owner(deps.as_ref(), env.clone(), position);
     let owner;
 
-    if owner_check.is_some() {
-        owner = owner_check.unwrap();
-    } else {
-        return Err(ContractError::DoesNotExist {});
+    match owner_check {
+        None => {
+            return Err(ContractError::DoesNotExist {});
+        }
+        Some(_) => owner = owner_check.unwrap(),
     }
 
 >>>>>>> Test Cannot Change Nonexistent Token
@@ -147,8 +148,8 @@ pub fn execute_change_url(
     tokens().replace(deps.storage, &token_id, Some(&updated_token), Some(&token))?;
 =======
     tokens().update(deps.storage, &token_id, |existing| match existing {
-        None => {Err(ContractError::Unauthorized {})}
-        Some(_) => {Ok(updated_token)}
+        None => Err(ContractError::Unauthorized {}),
+        Some(_) => Ok(updated_token),
     })?;
 
 >>>>>>> Test Cannot Change Nonexistent Token
