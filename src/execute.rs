@@ -1,11 +1,12 @@
 use crate::query as QueryHandler;
-use cosmwasm_std::{from_binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{from_binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, Addr};
 use cw721::{ContractInfoResponse, OwnerOfResponse};
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{config_store, tokens, Color, Config, PixelExtension};
+use crate::msg::QueryMsg::ContractInfo;
 
 const PIXEL: &str = "pixel";
 
@@ -92,6 +93,47 @@ pub fn execute_mint(
         .add_attribute("token_id", token_id)
         .add_attribute("url", new_url)
         .add_attribute("color_map", format!("{:?}", new_color_map)))
+}
+
+pub fn execute_change_url(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    position: u16,
+    url: String,
+) -> Result<Response, ContractError> {
+    let owner = get_owner(deps.as_ref(), env, position)?;
+
+    if owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let token_id = position.to_string();
+    let token = tokens().load(deps.storage, &token_id)?;
+
+    let extension = token.extension;
+
+    let updated_extension = PixelExtension {
+        pixel_colors: extension.pixel_colors,
+        url: url.clone(),
+    };
+
+    let updated_token = TokenInfo::<PixelExtension> {
+        owner: Addr::unchecked(owner),
+        approvals: token.approvals,
+        token_uri: token.token_uri,
+        extension: updated_extension
+    };
+
+    tokens().update(deps.storage, &token_id, |existing| match existing {
+        None => {Err(ContractError::Unauthorized {})}
+        Some(_) => {Ok(updated_token)}
+    });
+
+    Ok(Response::new()
+        .add_attribute("action", "change url")
+        .add_attribute("token_id", token_id)
+        .add_attribute("url", url))
 }
 
 pub fn execute_update_config(
