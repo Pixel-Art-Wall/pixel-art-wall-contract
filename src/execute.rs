@@ -8,6 +8,7 @@ use cw721_base::{state::TokenInfo, Cw721Contract};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{config_store, tokens, Color, Config, PixelExtension};
+use crate::msg::QueryMsg::ContractInfo;
 
 const PIXEL: &str = "pixel";
 
