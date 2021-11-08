@@ -3,11 +3,12 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{config_read, Color, Config, PixelExtension, PixelTokenInfo};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary, Addr, Api, Deps, Response};
+use cosmwasm_std::{coin, coins, from_binary, Addr, Api, Deps, Response};
 use cw721::{OwnerOfResponse, TokensResponse};
 use cw721_base::state::TokenInfo;
 
 const TEST_CREATOR: &str = "creator";
+const TEST_MINT_FEE_AMOUNT: u128 = 2500000;
 const TEST_USER: &str = "user";
 const TEST_USER2: &str = "user2";
 const TEST_TOKEN_ID1: u16 = 0;
@@ -61,7 +62,10 @@ fn pixel_info_query(deps: Deps, token_id: String) -> PixelTokenInfo {
 fn proper_initialization() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
@@ -72,6 +76,7 @@ fn proper_initialization() {
     assert_eq!(
         Config {
             owner: deps.api.addr_canonicalize(TEST_CREATOR).unwrap(),
+            mint_fee
         },
         config
     );
@@ -81,13 +86,16 @@ fn proper_initialization() {
 fn can_mint_pixel() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let user = mock_info(TEST_USER, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee.clone()]);
 
     let mint_msg = ExecuteMsg::Mint {
         token_id: TEST_TOKEN_ID1,
@@ -101,6 +109,7 @@ fn can_mint_pixel() {
         Response::new()
             .add_attribute("action", "mint_pixel")
             .add_attribute("minter", user.sender.clone())
+            .add_attribute("mint_fee", format!("{:?}", mint_fee))
             .add_attribute("token_id", TEST_TOKEN_ID1.to_string())
             .add_attribute("url", "")
             .add_attribute("color_map", format!("{:?}", EMPTY_COLORS)),
@@ -120,6 +129,7 @@ fn can_mint_pixel() {
         Response::new()
             .add_attribute("action", "mint_pixel")
             .add_attribute("minter", user.sender.clone())
+            .add_attribute("mint_fee", format!("{:?}", mint_fee))
             .add_attribute("token_id", TEST_TOKEN_ID2.to_string())
             .add_attribute("url", "")
             .add_attribute("color_map", format!("{:?}", EMPTY_COLORS)),
@@ -182,7 +192,10 @@ fn can_mint_pixel() {
 fn can_not_mint_existing_pixel() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
@@ -193,7 +206,7 @@ fn can_not_mint_existing_pixel() {
         color_map: None,
         url: None,
     };
-    let user = mock_info(TEST_USER, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee]);
     // First call is successful.
     let _res = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg.clone()).unwrap();
 
@@ -206,7 +219,10 @@ fn can_not_mint_existing_pixel() {
 fn can_not_mint_out_of_range_pixel() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
@@ -217,7 +233,7 @@ fn can_not_mint_out_of_range_pixel() {
         color_map: None,
         url: None,
     };
-    let user = mock_info(TEST_USER, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee]);
     let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap_err();
     assert_eq!(ContractError::InvalidTokenRange {}, error);
 }
@@ -226,13 +242,16 @@ fn can_not_mint_out_of_range_pixel() {
 fn can_mint_pixel_with_url_and_colors() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let user = mock_info(TEST_USER, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee.clone()]);
 
     let mint_msg = ExecuteMsg::Mint {
         token_id: TEST_TOKEN_ID1,
@@ -246,6 +265,7 @@ fn can_mint_pixel_with_url_and_colors() {
         Response::new()
             .add_attribute("action", "mint_pixel")
             .add_attribute("minter", user.sender.clone())
+            .add_attribute("mint_fee", format!("{:?}", mint_fee))
             .add_attribute("token_id", TEST_TOKEN_ID1.to_string())
             .add_attribute("url", TEST_URL)
             .add_attribute("color_map", format!("{:?}", TEST_COLORS)),
@@ -263,13 +283,16 @@ fn can_mint_pixel_with_url_and_colors() {
 fn can_change_url() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let user = mock_info(TEST_USER, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee.clone()]);
 
     let mint_msg = ExecuteMsg::Mint {
         token_id: TEST_TOKEN_ID1,
@@ -283,6 +306,7 @@ fn can_change_url() {
         Response::new()
             .add_attribute("action", "mint_pixel")
             .add_attribute("minter", user.sender.clone())
+            .add_attribute("mint_fee", format!("{:?}", mint_fee))
             .add_attribute("token_id", TEST_TOKEN_ID1.to_string())
             .add_attribute("url", "")
             .add_attribute("color_map", format!("{:?}", TEST_COLORS)),
@@ -321,14 +345,16 @@ fn can_change_url() {
 #[test]
 fn cannot_change_url_unminted() {
     let mut deps = mock_dependencies(&[]);
-
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let user = mock_info(TEST_USER, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee]);
 
     let mint_msg = ExecuteMsg::Mint {
         token_id: TEST_TOKEN_ID1,
@@ -353,14 +379,17 @@ fn cannot_change_url_unminted() {
 fn cannot_change_url_not_owned() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let user = mock_info(TEST_USER, &[]);
-    let user2 = mock_info(TEST_USER2, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee.clone()]);
+    let user2 = mock_info(TEST_USER2, &[mint_fee]);
 
     let mint_msg = ExecuteMsg::Mint {
         token_id: TEST_TOKEN_ID1,
@@ -385,13 +414,16 @@ fn cannot_change_url_not_owned() {
 fn can_change_color() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let user = mock_info(TEST_USER, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee.clone()]);
 
     let mint_msg = ExecuteMsg::Mint {
         token_id: TEST_TOKEN_ID1,
@@ -405,6 +437,7 @@ fn can_change_color() {
         Response::new()
             .add_attribute("action", "mint_pixel")
             .add_attribute("minter", user.sender.clone())
+            .add_attribute("mint_fee", format!("{:?}", mint_fee))
             .add_attribute("token_id", TEST_TOKEN_ID1.to_string())
             .add_attribute("url", TEST_URL.to_string())
             .add_attribute("color_map", format!("{:?}", EMPTY_COLORS)),
@@ -445,13 +478,16 @@ fn can_change_color() {
 fn cannot_change_color_unminted() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let user = mock_info(TEST_USER, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee]);
 
     let mint_msg = ExecuteMsg::Mint {
         token_id: TEST_TOKEN_ID1,
@@ -476,14 +512,17 @@ fn cannot_change_color_unminted() {
 fn cannot_change_color_not_owned() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {};
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
     let info = mock_info(TEST_CREATOR, &[]);
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let user = mock_info(TEST_USER, &[]);
-    let user2 = mock_info(TEST_USER2, &[]);
+    let user = mock_info(TEST_USER, &[mint_fee.clone()]);
+    let user2 = mock_info(TEST_USER2, &[mint_fee]);
 
     let mint_msg = ExecuteMsg::Mint {
         token_id: TEST_TOKEN_ID1,
@@ -502,4 +541,42 @@ fn cannot_change_color_not_owned() {
     let res = execute(deps.as_mut(), mock_env(), user2, change_color_msg);
 
     assert_eq!(Err(ContractError::Unauthorized {}), res);
+}
+
+#[test]
+fn can_not_mint_pixel_with_insufficient_funds() {
+    let mut deps = mock_dependencies(&[]);
+
+    let mint_fee = coin(TEST_MINT_FEE_AMOUNT, "uusd");
+    let msg = InstantiateMsg {
+        mint_fee: mint_fee.clone(),
+    };
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    // we can just call .unwrap() to assert this was a success
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let mint_msg = ExecuteMsg::Mint {
+        token_id: TEST_TOKEN_ID1,
+        color_map: None,
+        url: None,
+    };
+
+    // Trying to mint with less than TEST_MINT_FEE_AMOUNT uusd
+    let user = mock_info(TEST_USER, &coins(TEST_MINT_FEE_AMOUNT - 1, "uusd"));
+    let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg.clone()).unwrap_err();
+    assert_eq!(ContractError::InsufficientFunds {}, error);
+
+    // Trying to mint with more than one coin
+    let user = mock_info(
+        TEST_USER,
+        &[coin(TEST_MINT_FEE_AMOUNT, "uusd"), coin(50, "uluna")],
+    );
+    let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg.clone()).unwrap_err();
+    assert_eq!(ContractError::InsufficientFunds {}, error);
+
+    // Trying to mint with more than TEST_MINT_FEE_AMOUNT uusd
+    let user = mock_info(TEST_USER, &coins(TEST_MINT_FEE_AMOUNT + 1, "uusd"));
+    let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap_err();
+    assert_eq!(ContractError::InsufficientFunds {}, error);
 }

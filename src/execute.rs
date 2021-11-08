@@ -7,7 +7,7 @@ use cw721_base::{state::TokenInfo, Cw721Contract};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{config_store, tokens, Color, Config, PixelExtension};
+use crate::state::{config_read, config_store, tokens, Color, Config, PixelExtension};
 
 const PIXEL: &str = "pixel";
 
@@ -51,7 +51,9 @@ pub fn execute_mint(
         return Err(ContractError::Claimed {});
     }
 
-    check_sufficient_funds(info.funds, )
+    let config = config_read(deps.storage).load()?;
+
+    check_sufficient_funds(info.funds, &config.mint_fee)?;
 
     let new_color_map = {
         if let Some(color_map) = color_map {
@@ -94,6 +96,7 @@ pub fn execute_mint(
     Ok(Response::new()
         .add_attribute("action", "mint_pixel")
         .add_attribute("minter", info.sender)
+        .add_attribute("mint_fee", format!("{:?}", config.mint_fee))
         .add_attribute("token_id", token_id)
         .add_attribute("url", new_url)
         .add_attribute("color_map", format!("{:?}", new_color_map)))
@@ -209,10 +212,7 @@ fn get_owner(deps: Deps, env: Env, position: u16) -> Option<String> {
     }
 }
 
-fn check_sufficient_funds(funds: Vec<Coin>, required: Coin) -> Result<(), ContractError> {
-    if required.amount.u128() == 0 {
-        return Ok(());
-    }
+fn check_sufficient_funds(funds: Vec<Coin>, required: &Coin) -> Result<(), ContractError> {
     if funds.len() != 1 {
         return Err(ContractError::InsufficientFunds {});
     }
