@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, CanonicalAddr, Storage};
+use cosmwasm_std::{Addr, CanonicalAddr, Coin, Storage};
 use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
 use cw721_base::state::TokenInfo;
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
@@ -10,6 +10,7 @@ static KEY_CONFIG: &[u8] = b"config";
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: CanonicalAddr,
+    pub mint_fee: Coin,
 }
 
 pub fn config_store(storage: &mut dyn Storage) -> Singleton<Config> {

@@ -1,5 +1,5 @@
 use crate::state::{Color, PixelExtension};
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Binary, Coin};
 use cw721::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use cw721_base::msg::{ExecuteMsg as CW721ExecuteMsg, QueryMsg as CW721QueryMsg};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub mint_fee: Coin,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

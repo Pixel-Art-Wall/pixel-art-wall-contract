@@ -1,6 +1,6 @@
 use crate::query as QueryHandler;
 use cosmwasm_std::{
-    from_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    from_binary, Addr, Coin, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw721::{ContractInfoResponse, OwnerOfResponse};
 use cw721_base::{state::TokenInfo, Cw721Contract};
@@ -11,7 +11,7 @@ use crate::state::{config_store, tokens, Color, Config, PixelExtension};
 
 const PIXEL: &str = "pixel";
 
-pub fn instantiate(deps: DepsMut, info: MessageInfo, _msg: InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(deps: DepsMut, info: MessageInfo, msg: InstantiateMsg) -> StdResult<Response> {
     let cw721_contract = Cw721Contract::<PixelExtension, Empty>::default();
 
     let contract_info = ContractInfoResponse {
@@ -24,6 +24,7 @@ pub fn instantiate(deps: DepsMut, info: MessageInfo, _msg: InstantiateMsg) -> St
 
     let config = Config {
         owner: deps.api.addr_canonicalize(info.sender.as_str())?,
+        mint_fee: msg.mint_fee,
     };
     config_store(deps.storage).save(&config)?;
 
@@ -49,6 +50,8 @@ pub fn execute_mint(
     if get_owner(deps.as_ref(), env, position).is_some() {
         return Err(ContractError::Claimed {});
     }
+
+    check_sufficient_funds(info.funds, )
 
     let new_color_map = {
         if let Some(color_map) = color_map {
@@ -203,5 +206,21 @@ fn get_owner(deps: Deps, env: Env, position: u16) -> Option<String> {
             Some(response.owner)
         }
         Err(_) => None,
+    }
+}
+
+fn check_sufficient_funds(funds: Vec<Coin>, required: Coin) -> Result<(), ContractError> {
+    if required.amount.u128() == 0 {
+        return Ok(());
+    }
+    if funds.len() != 1 {
+        return Err(ContractError::InsufficientFunds {});
+    }
+    let sent_sufficient_funds =
+        funds[0].denom == required.denom && funds[0].amount.u128() == required.amount.u128();
+    if sent_sufficient_funds {
+        Ok(())
+    } else {
+        Err(ContractError::InsufficientFunds {})
     }
 }
