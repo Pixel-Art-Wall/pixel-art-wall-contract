@@ -562,21 +562,7 @@ fn can_not_mint_pixel_with_insufficient_funds() {
         url: None,
     };
 
-    // Trying to mint with less than TEST_MINT_FEE_AMOUNT uusd
     let user = mock_info(TEST_USER, &coins(TEST_MINT_FEE_AMOUNT - 1, "uusd"));
     let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg.clone()).unwrap_err();
-    assert_eq!(ContractError::InsufficientFunds {}, error);
-
-    // Trying to mint with more than one coin
-    let user = mock_info(
-        TEST_USER,
-        &[coin(TEST_MINT_FEE_AMOUNT, "uusd"), coin(50, "uluna")],
-    );
-    let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg.clone()).unwrap_err();
-    assert_eq!(ContractError::InsufficientFunds {}, error);
-
-    // Trying to mint with more than TEST_MINT_FEE_AMOUNT uusd
-    let user = mock_info(TEST_USER, &coins(TEST_MINT_FEE_AMOUNT + 1, "uusd"));
-    let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg).unwrap_err();
     assert_eq!(ContractError::InsufficientFunds {}, error);
 }
