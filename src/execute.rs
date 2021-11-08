@@ -213,6 +213,9 @@ fn get_owner(deps: Deps, env: Env, position: u16) -> Option<String> {
 }
 
 fn check_sufficient_funds(funds: Vec<Coin>, required: &Coin) -> Result<(), ContractError> {
+    if required.amount.u128() == 0 {
+        return Ok(());
+    }
     let sent_sufficient_funds = funds
         .iter()
         .any(|coin| coin.denom == required.denom && coin.amount.u128() >= required.amount.u128());
