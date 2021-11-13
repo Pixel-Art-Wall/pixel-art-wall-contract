@@ -562,7 +562,13 @@ fn can_not_mint_pixel_with_insufficient_funds() {
         url: None,
     };
 
+    // Can't mint with incorrect amount
     let user = mock_info(TEST_USER, &coins(TEST_MINT_FEE_AMOUNT - 1, "uusd"));
+    let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg.clone()).unwrap_err();
+    assert_eq!(ContractError::InsufficientFunds {}, error);
+
+    // Can't mint with incorrect denom
+    let user = mock_info(TEST_USER, &coins(TEST_MINT_FEE_AMOUNT, "usd"));
     let error = execute(deps.as_mut(), mock_env(), user.clone(), mint_msg.clone()).unwrap_err();
     assert_eq!(ContractError::InsufficientFunds {}, error);
 }
