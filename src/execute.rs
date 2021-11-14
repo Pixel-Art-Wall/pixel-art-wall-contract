@@ -1,17 +1,17 @@
 use crate::query as QueryHandler;
 use cosmwasm_std::{
-    from_binary, Addr, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    from_binary, Addr, Coin, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw721::{ContractInfoResponse, OwnerOfResponse};
 use cw721_base::{state::TokenInfo, Cw721Contract};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{config_store, tokens, Color, Config, PixelExtension};
+use crate::state::{config_read, config_store, tokens, Color, Config, PixelExtension};
 
 const PIXEL: &str = "pixel";
 
-pub fn instantiate(deps: DepsMut, info: MessageInfo, _msg: InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(deps: DepsMut, info: MessageInfo, msg: InstantiateMsg) -> StdResult<Response> {
     let cw721_contract = Cw721Contract::<PixelExtension, Empty>::default();
 
     let contract_info = ContractInfoResponse {
@@ -24,6 +24,7 @@ pub fn instantiate(deps: DepsMut, info: MessageInfo, _msg: InstantiateMsg) -> St
 
     let config = Config {
         owner: deps.api.addr_canonicalize(info.sender.as_str())?,
+        mint_fee: msg.mint_fee,
     };
     config_store(deps.storage).save(&config)?;
 
@@ -49,6 +50,10 @@ pub fn execute_mint(
     if get_owner(deps.as_ref(), env, position).is_some() {
         return Err(ContractError::Claimed {});
     }
+
+    let config = config_read(deps.storage).load()?;
+
+    check_sufficient_funds(info.funds, &config.mint_fee)?;
 
     let new_color_map = {
         if let Some(color_map) = color_map {
@@ -91,6 +96,7 @@ pub fn execute_mint(
     Ok(Response::new()
         .add_attribute("action", "mint_pixel")
         .add_attribute("minter", info.sender)
+        .add_attribute("mint_fee", format!("{:?}", config.mint_fee))
         .add_attribute("token_id", token_id)
         .add_attribute("url", new_url)
         .add_attribute("color_map", format!("{:?}", new_color_map)))
@@ -203,5 +209,19 @@ fn get_owner(deps: Deps, env: Env, position: u16) -> Option<String> {
             Some(response.owner)
         }
         Err(_) => None,
+    }
+}
+
+fn check_sufficient_funds(funds: Vec<Coin>, required: &Coin) -> Result<(), ContractError> {
+    if required.amount.u128() == 0 {
+        return Ok(());
+    }
+    let sent_sufficient_funds = funds
+        .iter()
+        .any(|coin| coin.denom == required.denom && coin.amount.u128() >= required.amount.u128());
+    if sent_sufficient_funds {
+        Ok(())
+    } else {
+        Err(ContractError::InsufficientFunds {})
     }
 }
